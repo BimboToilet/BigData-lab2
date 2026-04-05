@@ -1,0 +1,64 @@
+services:
+  namenode:
+    image: bitnami/hadoop:3.4
+    environment:
+      - HADOOP_DAEMON_TYPE=namenode
+      - HADOOP_CFG_HDFS_SITE_DFS_BLOCKSIZE=67108864
+      - HADOOP_CFG_HDFS_SITE_DFS_REPLICATION=3
+    ports:
+      - "9870:9870"
+
+  datanode-1:
+    image: bitnami/hadoop:3.4
+    environment:
+      HADOOP_DAEMON_TYPE=datanode
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+    depends_on: [namenode]
+    profiles: ["1dn", "3dn"]
+
+  datanode-2:
+    image: bitnami/hadoop:3.4
+    environment:
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+    depends_on: [namenode]
+    profiles: ["3dn"]
+
+  datanode-3:
+    image: bitnami/hadoop:3.4
+    environment:
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+    depends_on: [namenode]
+    profiles: ["3dn"]
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+    ports:
+      - "8080:8080"
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+    depends_on: [spark-master]
+
+  experiment-runner:
+    image: bitnami/spark:3.5
+    user: root
+    environment:
+      - OPTIMIZE=${OPTIMIZE:-false}
+      - REQUIRED_DN=${REQUIRED_DN:-1} 
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+    volumes:
+      - ./apps:/apps
+      - ./data:/data
+      - ./scripts/run.sh:/run.sh
+    entrypoint: ["/bin/bash", "/run.sh"]
+    depends_on: [namenode, spark-master]
+    profiles: ["1dn", "3dn"]
