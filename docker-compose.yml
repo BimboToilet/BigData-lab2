@@ -1,64 +1,114 @@
 services:
   namenode:
-    image: bitnami/hadoop:3.4
+    image: apache/hadoop:3.3.6
+    hostname: namenode
     environment:
-      - HADOOP_DAEMON_TYPE=namenode
-      - HADOOP_CFG_HDFS_SITE_DFS_BLOCKSIZE=67108864
-      - HADOOP_CFG_HDFS_SITE_DFS_REPLICATION=3
+      HADOOP_DAEMON_TYPE: "namenode"
+      HADOOP_CFG_CORE_SITE_FS_DEFAULTFS: "hdfs://namenode:9000"
+      HADOOP_CFG_HDFS_SITE_DFS_NAMENODE_RPC_ADDRESS: "0.0.0.0:9000"
+      HADOOP_CFG_HDFS_SITE_DFS_NAMENODE_HTTP_ADDRESS: "0.0.0.0:9870"
+      HADOOP_CFG_HDFS_SITE_DFS_BLOCKSIZE: "67108864"
+      HADOOP_CFG_HDFS_SITE_DFS_REPLICATION: "3"
     ports:
       - "9870:9870"
+    networks: [spark-hdfs]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9870"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   datanode-1:
-    image: bitnami/hadoop:3.4
+    image: apache/hadoop:3.3.6
     environment:
-      HADOOP_DAEMON_TYPE=datanode
+      - HADOOP_DAEMON_TYPE=datanode
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
-    depends_on: [namenode]
+    depends_on:
+      namenode:
+        condition: service_started
     profiles: ["1dn", "3dn"]
+    networks: [spark-hdfs]
 
   datanode-2:
-    image: bitnami/hadoop:3.4
+    image: apache/hadoop:3.3.6
     environment:
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
-    depends_on: [namenode]
+    depends_on:
+      namenode:
+        condition: service_started
     profiles: ["3dn"]
+    networks: [spark-hdfs]
 
   datanode-3:
-    image: bitnami/hadoop:3.4
+    image: apache/hadoop:3.3.6
     environment:
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
-    depends_on: [namenode]
+    depends_on:
+      namenode:
+        condition: service_started
     profiles: ["3dn"]
+    networks: [spark-hdfs]
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: apache/spark:3.5.3
     environment:
       - SPARK_MODE=master
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
     ports:
       - "8080:8080"
+    networks: [spark-hdfs]
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: apache/spark:3.5.3
     environment:
       - SPARK_MODE=worker
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_MEMORY=2G
-    depends_on: [spark-master]
+    depends_on:
+      spark-master:
+        condition: service_started
+    networks: [spark-hdfs]
+
+  dataset-generator:
+    image: python:3.9-slim
+    volumes:
+      - ./data:/data
+      - ./apps:/apps
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        pip install pandas numpy
+        python /apps/generate_dataset.py
+    profiles: ["1dn", "3dn"]
+    networks: [spark-hdfs]
 
   experiment-runner:
-    image: bitnami/spark:3.5
+    build:
+      context: ./experiment_runner
+      dockerfile: Dockerfile
+    depends_on:
+      namenode:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+      dataset-generator:
+        condition: service_completed_successfully 
     user: root
     environment:
-      - OPTIMIZE=${OPTIMIZE:-false}
-      - REQUIRED_DN=${REQUIRED_DN:-1} 
+      - OPTIMIZE
+      - REQUIRED_DN
       - SPARK_MASTER_URL=spark://spark-master:7077
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - ./apps:/apps
       - ./data:/data
       - ./scripts/run.sh:/run.sh
     entrypoint: ["/bin/bash", "/run.sh"]
-    depends_on: [namenode, spark-master]
     profiles: ["1dn", "3dn"]
+    networks: [spark-hdfs]
+
+networks:
+  spark-hdfs:
+    driver: bridge

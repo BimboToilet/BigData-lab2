@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cat <<EOF > /opt/bitnami/spark/conf/log4j2.properties
+mkdir -p /opt/spark/conf
+cat <<EOF > /opt/spark/conf/log4j2.properties
 rootLogger.level = error
 rootLogger.appenderRef.console.ref = Console
 appender.console.type = Console
@@ -8,6 +9,22 @@ appender.console.name = Console
 appender.console.layout.type = PatternLayout
 appender.console.layout.pattern = %p %c{1}: %m%n
 EOF
+
+mkdir -p $HADOOP_CONF_DIR
+cat <<EOF > ${HADOOP_CONF_DIR}/core-site.xml
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>${HADOOP_CFG_CORE_SITE_FS_DEFAULTFS}</value>
+    </property>
+</configuration>
+EOF
+
+echo "Testing connection to namenode:9000..."
+until timeout 1 bash -c "cat < /dev/null > /dev/tcp/namenode/9000" 2>/dev/null; do
+  echo "Namenode RPC port (9000) is unreachable - waiting..."
+  sleep 2
+done
 
 echo "Waiting for $REQUIRED_DN DataNodes..."
 
@@ -35,13 +52,13 @@ done
 echo "Downloading dataset to HDFS..."
 hdfs dfs -mkdir -p /data
 hdfs dfs -rm -f /data/dataset.csv
-hdfs dfs -D dfs.replication=$CURRENT_DN -put -f /data/dataset.csv /data/
+hdfs dfs -D dfs.replication=$REQUIRED_DN -put -f /data/dataset.csv /data/
 
 echo "Starting Spark (Optimize: $OPTIMIZE)..."
 spark-submit \
  --master $SPARK_MASTER_URL \
  --conf spark.ui.showConsoleProgress=false /apps/main.py \
  --optimize $OPTIMIZE \
- --datanodes $CURRENT_DN
+ --datanodes $REQUIRED_DN
 
 echo "Run succeed"
