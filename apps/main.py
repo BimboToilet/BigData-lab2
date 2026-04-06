@@ -9,7 +9,11 @@ def get_executors_metrics(spark):
     sc = spark.sparkContext
     mem_status = sc._jsc.sc().getExecutorMemoryStatus()
     
-    mem_dict = dict(sc._gateway.jvm.scala.collection.JavaConversions.mapAsPyMap(mem_status))
+    mem_dict = {}
+    iterator = mem_status.iterator()
+    while iterator.hasNext():
+        item = iterator.next()
+        mem_dict[item._1()] = item._2()
     
     executors_count = len(mem_dict)
     
