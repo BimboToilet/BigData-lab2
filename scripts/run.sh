@@ -1,15 +1,5 @@
 #!/bin/bash
 
-mkdir -p /opt/spark/conf
-cat <<EOF > /opt/spark/conf/log4j2.properties
-rootLogger.level = error
-rootLogger.appenderRef.console.ref = Console
-appender.console.type = Console
-appender.console.name = Console
-appender.console.layout.type = PatternLayout
-appender.console.layout.pattern = %p %c{1}: %m%n
-EOF
-
 echo "Testing connection to namenode:9000..."
 until timeout 1 bash -c "cat < /dev/null > /dev/tcp/namenode/9000" 2>/dev/null; do
   echo "Namenode RPC port (9000) is unreachable - waiting..."

@@ -68,6 +68,8 @@ services:
       - SPARK_NO_DAEMONIZE=true
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    volumes:
+      - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
     ports:
       - "8080:8080"
     networks: [spark-hdfs]
@@ -81,6 +83,8 @@ services:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_MEMORY=2G
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    volumes:
+      - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
     depends_on:
       spark-master:
         condition: service_started
@@ -119,6 +123,7 @@ services:
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
+      - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
       - ./apps:/apps
       - ./data:/data
       - ./scripts/run.sh:/run.sh
