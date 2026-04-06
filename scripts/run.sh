@@ -10,16 +10,6 @@ appender.console.layout.type = PatternLayout
 appender.console.layout.pattern = %p %c{1}: %m%n
 EOF
 
-mkdir -p $HADOOP_CONF_DIR
-cat <<EOF > ${HADOOP_CONF_DIR}/core-site.xml
-<configuration>
-    <property>
-        <name>fs.defaultFS</name>
-        <value>${HADOOP_CFG_CORE_SITE_FS_DEFAULTFS}</value>
-    </property>
-</configuration>
-EOF
-
 echo "Testing connection to namenode:9000..."
 until timeout 1 bash -c "cat < /dev/null > /dev/tcp/namenode/9000" 2>/dev/null; do
   echo "Namenode RPC port (9000) is unreachable - waiting..."
@@ -61,4 +51,4 @@ spark-submit \
  --optimize $OPTIMIZE \
  --datanodes $REQUIRED_DN
 
-echo "Run succeed"
+echo "Run complete"

@@ -3,12 +3,12 @@ services:
     image: apache/hadoop:3.3.6
     hostname: namenode
     environment:
-      HADOOP_DAEMON_TYPE: "namenode"
-      HADOOP_CFG_CORE_SITE_FS_DEFAULTFS: "hdfs://namenode:9000"
-      HADOOP_CFG_HDFS_SITE_DFS_NAMENODE_RPC_ADDRESS: "0.0.0.0:9000"
-      HADOOP_CFG_HDFS_SITE_DFS_NAMENODE_HTTP_ADDRESS: "0.0.0.0:9870"
-      HADOOP_CFG_HDFS_SITE_DFS_BLOCKSIZE: "67108864"
-      HADOOP_CFG_HDFS_SITE_DFS_REPLICATION: "3"
+      - HADOOP_DAEMON_TYPE=namenode
+      - ENSURE_NAMENODE_DIR=/tmp/hadoop-root/dfs/name
+    volumes:
+      - ./hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+      - ./hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+    command: ["/bin/bash", "-c", "hdfs namenode -format -force && hdfs namenode"]
     ports:
       - "9870:9870"
     networks: [spark-hdfs]
@@ -22,30 +22,41 @@ services:
     image: apache/hadoop:3.3.6
     environment:
       - HADOOP_DAEMON_TYPE=datanode
-      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
     depends_on:
       namenode:
-        condition: service_started
+        condition: service_healthy
+    volumes:
+      - ./hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+      - ./hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+    command: ["hdfs", "datanode"]
     profiles: ["1dn", "3dn"]
     networks: [spark-hdfs]
 
   datanode-2:
     image: apache/hadoop:3.3.6
     environment:
-      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+      - HADOOP_DAEMON_TYPE=datanode
     depends_on:
       namenode:
-        condition: service_started
+        condition: service_healthy
+    volumes:
+      - ./hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+      - ./hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+    command: ["hdfs", "datanode"]
     profiles: ["3dn"]
     networks: [spark-hdfs]
 
   datanode-3:
     image: apache/hadoop:3.3.6
     environment:
-      - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
+      - HADOOP_DAEMON_TYPE=datanode
     depends_on:
       namenode:
-        condition: service_started
+        condition: service_healthy
+    volumes:
+      - ./hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+      - ./hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+    command: ["hdfs", "datanode"]
     profiles: ["3dn"]
     networks: [spark-hdfs]
 
@@ -96,6 +107,7 @@ services:
         condition: service_completed_successfully 
     user: root
     environment:
+      - HADOOP_USER_NAME=hadoop
       - OPTIMIZE
       - REQUIRED_DN
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -105,6 +117,8 @@ services:
       - ./apps:/apps
       - ./data:/data
       - ./scripts/run.sh:/run.sh
+      - ./hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+      - ./hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
     entrypoint: ["/bin/bash", "/run.sh"]
     profiles: ["1dn", "3dn"]
     networks: [spark-hdfs]
