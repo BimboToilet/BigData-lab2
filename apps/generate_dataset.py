@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
+import os
 
-n_rows = 150000
+n_rows = int(os.environ.get('DATASET_SIZE', 1000000))
 
 data = {
     'id_col': np.arange(n_rows),

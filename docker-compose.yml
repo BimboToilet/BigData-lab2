@@ -22,6 +22,7 @@ services:
     image: apache/hadoop:3.3.6
     environment:
       - HADOOP_DAEMON_TYPE=datanode
+      - HADOOP_HEAPSIZE_MAX=512
     depends_on:
       namenode:
         condition: service_healthy
@@ -36,6 +37,7 @@ services:
     image: apache/hadoop:3.3.6
     environment:
       - HADOOP_DAEMON_TYPE=datanode
+      - HADOOP_HEAPSIZE_MAX=512
     depends_on:
       namenode:
         condition: service_healthy
@@ -50,6 +52,7 @@ services:
     image: apache/hadoop:3.3.6
     environment:
       - HADOOP_DAEMON_TYPE=datanode
+      - HADOOP_HEAPSIZE_MAX=512
     depends_on:
       namenode:
         condition: service_healthy
@@ -81,7 +84,7 @@ services:
       - HADOOP_CFG_CORE_SITE_FS_DEFAULTFS=hdfs://namenode:9000
       - SPARK_NO_DAEMONIZE=true
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_MEMORY=1G
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     volumes:
       - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
@@ -95,6 +98,8 @@ services:
     volumes:
       - ./data:/data
       - ./apps:/apps
+    environment:
+    - DATASET_SIZE
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |

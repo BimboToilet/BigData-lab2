@@ -32,7 +32,13 @@ done
 echo "Downloading dataset to HDFS..."
 hdfs dfs -mkdir -p /data
 hdfs dfs -rm -f /data/dataset.csv
-hdfs dfs -D dfs.replication=$REQUIRED_DN -put -f /data/dataset.csv /data/
+
+if hdfs dfs -D dfs.replication=$REQUIRED_DN -put -f /data/dataset.csv /data/; then
+  echo "Upload successful, removing local file..."
+  rm /data/dataset.csv
+else
+  exit 1
+fi
 
 echo "Testing connection to spark-master:7077..."
 until timeout 1 bash -c "cat < /dev/null > /dev/tcp/spark-master/7077" 2>/dev/null; do

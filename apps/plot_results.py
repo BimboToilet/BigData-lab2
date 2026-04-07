@@ -20,5 +20,5 @@ plt.xlabel('Количество DataNodes')
 plt.ylabel('Время выполнения (сек)')
 plt.legend(title='Spark Optimized')
 
-plt.savefig('performance_results.png')
+plt.savefig('../performance_results.png')
 plt.show()
